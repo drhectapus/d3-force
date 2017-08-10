@@ -31,8 +31,9 @@ export default class App extends Component {
     console.log(nodes);
     console.log(links);
 
-    const w = 800;
-    const h = 500;
+    const w = 900;
+    const h = 550;
+    const radius = 9;
 
     const margin = {
       top: 30,
@@ -41,16 +42,25 @@ export default class App extends Component {
       left: 80
     };
 
+    const flagNodes = d3.select('.chart')
+                        .append('div')
+                        .attr('class', 'flag-nodes');
+
     const svg = d3.select('.chart')
                   .append('svg')
                   .attr('width', w)
                   .attr('height', h);
 
+    const div = d3.select('.chart')
+                  .append('div')
+                  .attr('class', 'tooltip')
+                  .style('opacity', 0);
+
     const simulation = d3.forceSimulation()
-                         .force('link', d3.forceLink().id(function(d, i) { return i }).distance(1))
-                         .force('charge', d3.forceManyBody().strength(1))
+                         .force('link', d3.forceLink().id(function(d, i) { return i }).distance(50))
+                         .force('charge', d3.forceManyBody().strength(-30).distanceMax(50).distanceMin(20))
                          .force('center', d3.forceCenter(w / 2, h / 2))
-                         .force('collision', d3.forceCollide(12));
+                         .force('collision', d3.forceCollide().radius(16).strength(1));
 
     const link = svg.append('g')
                     .attr('class', 'links')
@@ -58,26 +68,35 @@ export default class App extends Component {
                     .data(links)
                     .enter()
                     .append('line')
-                    .attr('stroke', 'black');
 
-    const node = d3.select('.nodes')
-                    .selectAll('img')
-                    .data(nodes)
-                    .enter()
-                    .append('img')
-                    .attr('class', d => {
-                      return `flag flag-${d.code}`;
-                    })
-                    .call(d3.drag()
-                            .on('start', dragstarted)
-                            .on('drag', dragged)
-                            .on('end', dragended));
 
     simulation.nodes(nodes)
               .on('tick', ticked);
 
     simulation.force('link')
               .links(links);
+
+    let node = flagNodes.selectAll('.flag-nodes')
+                        .data(nodes)
+                        .enter()
+                        .append('div')
+                        .attr('class', d => {
+                          return `flag flag-${d.code}`;
+                        })
+                        .call(d3.drag()
+                                .on('start', dragstarted)
+                                .on('drag', dragged)
+                                .on('end', dragended))
+                        .on('mouseover', function(d) {
+
+                          div.style('opacity', 0.9)
+                             .html(`<strong>${d.country}</strong>`)
+                             .style('left', `${d3.event.pageX}px`)
+                             .style('top', `${d3.event.pageY}px`)
+                        })
+                        .on('mouseout', function(d) {
+                          div.style('opacity', 0);
+                        });
 
     function ticked() {
        link
@@ -87,8 +106,14 @@ export default class App extends Component {
            .attr("y2", function(d) { return d.target.y; });
 
        node
-           .style("left", function(d) { return d.x + 'px'; })
-           .style("top", function(d) { return d.y + 'px'; });
+           .style("left", function(d) {
+             let xlimit = Math.max(radius, Math.min(w - radius, d.x))
+             return (xlimit) + 'px'
+           })
+           .style("top", function(d) {
+             let ylimit = Math.max(radius, Math.min(h - radius, d.y))
+             return (ylimit - 2) + 'px'
+           });
     }
 
 
@@ -112,9 +137,9 @@ export default class App extends Component {
 
   render() {
     return(
-      <div>D3 Force-Directed Layout
+      <div>
+        <h1 className='title'>D3 Force-Directed Layout</h1>
         <div className='chart'>
-          <div className='nodes'></div>
         </div>
       </div>
     )
